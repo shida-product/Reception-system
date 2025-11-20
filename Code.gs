@@ -51,8 +51,8 @@ function createTicket(email) {
   sheet.appendRow(newRow);
 
   const ticketInfo = {
-    ticketNumber: newNumber,
-    receivedAt: now,
+    number: newNumber,
+    createdAt: now,
     email: email,
     status: '受付中',
   };
@@ -79,8 +79,8 @@ function getActiveTickets() {
     })
     .map(function (row) {
       return {
-        ticketNumber: row[1],
-        receivedAt: row[0],
+        number: row[1],
+        createdAt: row[0],
         email: row[2],
         status: row[3],
       };

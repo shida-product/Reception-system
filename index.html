@@ -180,10 +180,12 @@
 
   <script>
     (() => {
+      const STORAGE_KEY = 'receptionTickets';
       const emailInput = document.getElementById('email');
       const messageEl = document.getElementById('message');
       const cardsEl = document.getElementById('cards');
       const issueBtn = document.getElementById('issue-btn');
+      const useAppsScript = typeof google !== 'undefined' && google.script && google.script.run;
 
       function showMessage(text) {
         messageEl.textContent = text;
@@ -195,10 +197,43 @@
         messageEl.style.display = 'none';
       }
 
+      function loadFromStorage() {
+        try {
+          return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        } catch (e) {
+          console.warn('Failed to read local tickets', e);
+          return [];
+        }
+      }
+
+      function saveToStorage(tickets) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+      }
+
+      function formatDate(value) {
+        if (!value) return '';
+        const date = value instanceof Date ? value : new Date(value);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+          date.getDate()
+        ).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(
+          date.getMinutes()
+        ).padStart(2, '0')}`;
+      }
+
+      function normalizeTicket(ticket) {
+        return {
+          number: ticket.number || ticket.ticketNumber,
+          createdAt: ticket.createdAt || ticket.receivedAt,
+          status: ticket.status || '受付中',
+          email: ticket.email || '',
+        };
+      }
+
       function renderCards(tickets) {
+        const normalized = (tickets || []).map(normalizeTicket).filter((t) => t.status === '受付中');
         cardsEl.innerHTML = '';
 
-        if (!tickets || tickets.length === 0) {
+        if (normalized.length === 0) {
           const empty = document.createElement('div');
           empty.className = 'empty-state';
           empty.textContent = '現在受付中のチケットはありません。';
@@ -206,27 +241,35 @@
           return;
         }
 
-        tickets.forEach((ticket) => {
+        normalized.forEach((ticket) => {
           const card = document.createElement('div');
           card.className = 'card';
 
           const header = document.createElement('div');
           header.className = 'card-header';
-          header.innerHTML = `<span>受付番号 ${ticket.number}</span><span class="status">受付中</span>`;
+          header.innerHTML = `<span>受付番号 ${ticket.number}</span><span class="status">${ticket.status}</span>`;
 
           const body = document.createElement('div');
           body.className = 'card-body';
           const created = document.createElement('div');
-          created.textContent = `受付日時: ${ticket.createdAt}`;
+          created.textContent = `受付日時: ${formatDate(ticket.createdAt)}`;
           body.appendChild(created);
 
           const button = document.createElement('button');
           button.type = 'button';
           button.textContent = '準備完了にする';
           button.addEventListener('click', () => {
-            google.script.run
-              .withSuccessHandler(loadTickets)
-              .completeTicket(ticket.number);
+            if (useAppsScript) {
+              google.script.run.withSuccessHandler(loadTickets).completeTicket(ticket.number);
+              return;
+            }
+
+            const tickets = loadFromStorage();
+            const updated = tickets.map((t) =>
+              normalizeTicket(t).number === ticket.number ? { ...t, status: '準備完了' } : t
+            );
+            saveToStorage(updated);
+            loadTickets();
           });
 
           card.appendChild(header);
@@ -238,22 +281,54 @@
 
       function loadTickets() {
         clearMessage();
-        google.script.run
-          .withSuccessHandler(renderCards)
-          .getActiveTickets();
+        if (useAppsScript) {
+          google.script.run.withSuccessHandler(renderCards).getActiveTickets();
+        } else {
+          renderCards(loadFromStorage());
+        }
       }
 
       issueBtn.addEventListener('click', () => {
         const email = emailInput.value.trim();
         if (!email) return;
 
-        google.script.run
-          .withSuccessHandler((ticketNumber) => {
-            emailInput.value = '';
-            showMessage(`受付番号 ${ticketNumber} を発行しました`);
-            loadTickets();
+        if (useAppsScript) {
+          google.script.run
+            .withSuccessHandler((ticketNumber) => {
+              emailInput.value = '';
+              showMessage(`受付番号 ${ticketNumber} を発行しました`);
+              loadTickets();
+            })
+            .createTicket(email);
+          return;
+        }
+
+        const tickets = loadFromStorage();
+        const now = new Date();
+        const todayMax = tickets
+          .map(normalizeTicket)
+          .filter((t) => {
+            const date = new Date(t.createdAt);
+            return (
+              date.getFullYear() === now.getFullYear() &&
+              date.getMonth() === now.getMonth() &&
+              date.getDate() === now.getDate()
+            );
           })
-          .createTicket(email);
+          .reduce((max, t) => Math.max(max, parseInt(t.number, 10) || 0), 0);
+
+        const newNumber = String(todayMax + 1).padStart(3, '0');
+        const newTicket = {
+          number: newNumber,
+          createdAt: now.toISOString(),
+          status: '受付中',
+          email,
+        };
+
+        saveToStorage([...tickets, newTicket]);
+        emailInput.value = '';
+        showMessage(`受付番号 ${newNumber} を発行しました`);
+        loadTickets();
       });
 
       document.addEventListener('DOMContentLoaded', loadTickets);
