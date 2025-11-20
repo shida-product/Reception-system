@@ -160,6 +160,46 @@
       text-align: center;
       background: #ffffff;
     }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      max-width: 360px;
+      width: calc(100% - 32px);
+      text-align: center;
+      display: grid;
+      gap: 12px;
+    }
+
+    .modal h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .modal p {
+      margin: 0;
+      font-size: 14px;
+      color: #374151;
+    }
+
+    .modal button {
+      margin: 0 auto;
+      min-width: 160px;
+    }
   </style>
 </head>
 <body>
@@ -178,12 +218,23 @@
     <div id="cards" class="card-grid"></div>
   </main>
 
+  <div id="overlay" class="overlay">
+    <div class="modal">
+      <h3>受付番号を発行しました</h3>
+      <p id="modal-text"></p>
+      <button id="modal-close" type="button">OK</button>
+    </div>
+  </div>
+
   <script>
     (() => {
       const emailInput = document.getElementById('email');
       const messageEl = document.getElementById('message');
       const cardsEl = document.getElementById('cards');
       const issueBtn = document.getElementById('issue-btn');
+      const overlay = document.getElementById('overlay');
+      const modalText = document.getElementById('modal-text');
+      const modalClose = document.getElementById('modal-close');
 
       function showMessage(text) {
         messageEl.textContent = text;
@@ -236,6 +287,15 @@
         });
       }
 
+      function showPopup(ticketNumber) {
+        modalText.textContent = `受付番号 ${ticketNumber} を発行しました。`;
+        overlay.style.display = 'flex';
+      }
+
+      function hidePopup() {
+        overlay.style.display = 'none';
+      }
+
       function loadTickets() {
         clearMessage();
         google.script.run
@@ -251,9 +311,15 @@
           .withSuccessHandler((ticketNumber) => {
             emailInput.value = '';
             showMessage(`受付番号 ${ticketNumber} を発行しました`);
+            showPopup(ticketNumber);
             loadTickets();
           })
           .createTicket(email);
+      });
+
+      modalClose.addEventListener('click', hidePopup);
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) hidePopup();
       });
 
       document.addEventListener('DOMContentLoaded', loadTickets);
