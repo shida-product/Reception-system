@@ -195,6 +195,23 @@
         messageEl.style.display = 'none';
       }
 
+      function formatDateTime(value) {
+        if (!value) return '';
+        try {
+          const date = new Date(value);
+          return new Intl.DateTimeFormat('ja-JP', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          }).format(date);
+        } catch (error) {
+          console.error('日時の整形に失敗しました', error);
+          return String(value);
+        }
+      }
+
       function renderCards(tickets) {
         cardsEl.innerHTML = '';
 
@@ -212,21 +229,28 @@
 
           const header = document.createElement('div');
           header.className = 'card-header';
-          header.innerHTML = `<span>受付番号 ${ticket.number}</span><span class="status">受付中</span>`;
+          const statusText = ticket.status || '受付中';
+          header.innerHTML = `<span>受付番号 ${ticket.ticketNumber}</span><span class="status">${statusText}</span>`;
 
           const body = document.createElement('div');
           body.className = 'card-body';
           const created = document.createElement('div');
-          created.textContent = `受付日時: ${ticket.createdAt}`;
+          created.textContent = `受付日時: ${formatDateTime(ticket.receivedAt)}`;
           body.appendChild(created);
 
           const button = document.createElement('button');
           button.type = 'button';
           button.textContent = '準備完了にする';
           button.addEventListener('click', () => {
+            const confirmed = window.confirm(
+              `受付番号 ${ticket.ticketNumber} を準備完了に変更してよろしいですか？`
+            );
+            if (!confirmed) {
+              return;
+            }
             google.script.run
               .withSuccessHandler(loadTickets)
-              .completeTicket(ticket.number);
+              .completeTicket(ticket.ticketNumber);
           });
 
           card.appendChild(header);
