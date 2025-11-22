@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="ticket-meta">${metaHtml}</div>
             </div>
             <div class="ticket-actions">
-                <button class="btn-icon" title="通知設定" onclick="window.triggerConfig(${ticket.id})">⚙️</button>
+                <button class="btn-icon btn-config" title="通知設定" onclick="window.triggerConfig(${ticket.id})">⚙️</button>
                 ${moveBtnHtml}
             </div>
         `;
