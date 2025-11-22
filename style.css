@@ -308,19 +308,32 @@ body {
     background: none;
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-secondary);
-    width: 36px;
-    height: 36px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
+    font-size: 1.2rem;
 }
 
 .btn-icon:hover {
     background-color: rgba(255, 255, 255, 0.1);
     color: var(--text-primary);
+}
+
+.btn-config {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: var(--primary-color);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.btn-config:hover {
+    background-color: rgba(59, 130, 246, 0.25);
+    color: var(--primary-color);
+    border-color: rgba(59, 130, 246, 0.4);
 }
 
 .btn-move {
